@@ -113,7 +113,6 @@ def main():
     threading.Thread(target=rodar_flask).start()
 
     print("Bot rodando...")
-    application.run_polling()
 
 
 if __name__ == "__main__":
