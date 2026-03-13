@@ -5,14 +5,14 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# CONFIGURAÇÃO
+# CONFIGURAÇÃO (Puxando da Railway)
 TOKEN = os.getenv("TOKEN_TELEGRAM")
 MP_ACCESS_TOKEN = os.getenv("TOKEN_MERCADO_PAGO")
 EBOOK_FILE = "ebook.pdf"
 
 app = Flask(__name__)
 
-# Inicializa a aplicação globalmente
+# Inicializa a aplicação globalmente (Resolve o erro da imagem e68094)
 application = ApplicationBuilder().token(TOKEN).build()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -20,7 +20,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     payment_data = {
         "transaction_amount": 10.00,
-        "description": "E-book Digital",
+        "description": "E-book Astral",
         "payment_method_id": "pix",
         "payer": {"email": "cliente@email.com"},
         "metadata": {"chat_id": chat_id}
@@ -38,25 +38,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"🚀 *Pedido gerado!*\n\nCopie o código PIX abaixo para pagar:\n\n`{pix_code}`",
+            text=f"🚀 *Pedido Gerado!*\n\nCopie o código PIX abaixo:\n\n`{pix_code}`",
             parse_mode="Markdown"
         )
     except Exception as e:
-        print(f"Erro MP: {e}")
-        await context.bot.send_message(chat_id=chat_id, text="Erro ao gerar PIX.")
+        print(f"Erro no Mercado Pago: {e}")
+        await context.bot.send_message(chat_id=chat_id, text="Erro ao gerar o PIX.")
 
 application.add_handler(CommandHandler("start", start))
 
 @app.route("/telegram", methods=["POST"])
 async def telegram_webhook():
-    # PROTEÇÃO CRÍTICA: Garante inicialização (Resolve erro das imagens e703dd e e6f7de)
+    # Garante que o bot esteja pronto para uso (Resolve imagens e703dd e e6f7de)
     if not application.active:
         await application.initialize()
         await application.start()
         
     try:
-        data = request.get_json()
-        update = Update.de_json(data, application.bot)
+        update = Update.de_json(request.get_json(), application.bot)
         await application.process_update(update)
     except Exception as e:
         print(f"Erro no processamento: {e}")
@@ -78,11 +77,11 @@ async def mp_webhook():
                 with open(EBOOK_FILE, "rb") as doc:
                     await application.bot.send_document(chat_id=chat_id, document=doc, caption="✅ Pago!")
             except:
-                print("PDF não encontrado.")
+                print("Arquivo PDF não encontrado.")
                 
     return "ok", 200
 
 if __name__ == "__main__":
-    # Railway usa a porta 8080 (visto na imagem e59b1a)
+    # Usa a porta 8080 detectada nos logs (imagem e593a0)
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
