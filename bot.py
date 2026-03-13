@@ -72,10 +72,13 @@ def telegram_webhook():
 
     update = Update.de_json(request.json, bot)
 
-    asyncio.run(application.process_update(update))
+    async def process():
+        await application.initialize()
+        await application.process_update(update)
+
+    asyncio.run(process())
 
     return "ok"
-
 # =====================
 # MERCADO PAGO WEBHOOK
 # =====================
