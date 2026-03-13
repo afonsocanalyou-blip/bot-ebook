@@ -1,26 +1,39 @@
 import os
 import requests
+import threading
 from flask import Flask, request
-from telegram import Bot, Update
+from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+# ==============================
+# CONFIGURAÇÕES
+# ==============================
 
 TOKEN = "8499285711:AAFOUKo-ww9y2dRoMcKxXxCW5AQMzo8GLKg"
 MP_ACCESS_TOKEN = "APP_USR-5861693151731886-030420-ba25ca80cb6f09ddae75270c8b781c72-254598124"
-EBOOK_PATH = "ebook.pdf"
+
+EBOOK_FILE = "ebook.pdf"
 
 app = Flask(__name__)
 bot = Bot(token=TOKEN)
 
-# comando /start
+# ==============================
+# COMANDO /START
+# ==============================
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
     chat_id = update.effective_chat.id
 
     payment_data = {
         "transaction_amount": 10,
-        "description": "Compra do Ebook",
+        "description": "Compra Ebook",
         "payment_method_id": "pix",
         "payer": {
             "email": "afonsocanalyou@gmail.com"
+        },
+        "metadata": {
+            "chat_id": chat_id
         }
     }
 
@@ -37,20 +50,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = r.json()
 
-    pix_code = data["point_of_interaction"]["transaction_data"]["qr_code"]
+    pix = data["point_of_interaction"]["transaction_data"]["qr_code"]
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Pague o PIX abaixo para receber o ebook:\n\n{pix_code}"
+        text=f"Pague o PIX abaixo para receber o ebook:\n\n{pix}"
     )
 
-# webhook do mercado pago
+
+# ==============================
+# WEBHOOK MERCADO PAGO
+# ==============================
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
 
     data = request.json
 
     if "data" in data:
+
         payment_id = data["data"]["id"]
 
         headers = {
@@ -70,23 +88,41 @@ def webhook():
 
             bot.send_document(
                 chat_id=chat_id,
-                document=open(EBOOK_PATH, "rb")
+                document=open(EBOOK_FILE, "rb")
             )
 
     return "ok"
 
-# iniciar bot telegram
-def start_bot():
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.run_polling()
 
-# iniciar servidor
+# ==============================
+# BOT TELEGRAM
+# ==============================
+
+def run_telegram_bot():
+
+    import asyncio
+
+    async def main():
+
+        application = ApplicationBuilder().token(TOKEN).build()
+
+        application.add_handler(CommandHandler("start", start))
+
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling()
+
+    asyncio.run(main())
+
+
+# ==============================
+# START SERVIDOR
+# ==============================
+
 if __name__ == "__main__":
-    import threading
 
     print("Bot rodando...")
 
-    threading.Thread(target=start_bot).start()
+    threading.Thread(target=run_telegram_bot).start()
 
     app.run(host="0.0.0.0", port=8000)
