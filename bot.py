@@ -1,12 +1,12 @@
 import requests
 from flask import Flask, request
-from telegram import Bot, Update
+from telegram import Update, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import asyncio
 
-# ==========================
-# CONFIGURAÇÕES
-# ==========================
+# =====================
+# CONFIG
+# =====================
 
 TOKEN = "8499285711:AAFOUKo-ww9y2dRoMcKxXxCW5AQMzo8GLKg"
 MP_ACCESS_TOKEN = "APP_USR-5861693151731886-030420-ba25ca80cb6f09ddae75270c8b781c72-254598124"
@@ -15,9 +15,15 @@ EBOOK_FILE = "ebook.pdf"
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-# ==========================
+# =====================
+# TELEGRAM BOT
+# =====================
+
+application = ApplicationBuilder().token(TOKEN).build()
+
+# =====================
 # COMANDO START
-# ==========================
+# =====================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -52,28 +58,27 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Pague o PIX abaixo para receber o ebook:\n\n{pix}"
+        text=f"Pague este PIX para receber o ebook:\n\n{pix}"
     )
 
-# ==========================
+application.add_handler(CommandHandler("start", start))
+
+# =====================
 # TELEGRAM WEBHOOK
-# ==========================
+# =====================
 
 @app.route("/telegram", methods=["POST"])
 def telegram_webhook():
 
     update = Update.de_json(request.json, bot)
 
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-
     asyncio.run(application.process_update(update))
 
     return "ok"
 
-# ==========================
+# =====================
 # MERCADO PAGO WEBHOOK
-# ==========================
+# =====================
 
 @app.route("/webhook", methods=["POST"])
 def mp_webhook():
@@ -106,9 +111,9 @@ def mp_webhook():
 
     return "ok"
 
-# ==========================
-# START
-# ==========================
+# =====================
+# START SERVER
+# =====================
 
 if __name__ == "__main__":
 
