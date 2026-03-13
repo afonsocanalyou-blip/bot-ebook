@@ -1,13 +1,12 @@
 import requests
 from flask import Flask, request
-from telegram import Update, Bot
+from telegram import Bot, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import asyncio
-import threading
 
-# =============================
-# CONFIG
-# =============================
+# ==========================
+# CONFIGURAÇÕES
+# ==========================
 
 TOKEN = "8499285711:AAFOUKo-ww9y2dRoMcKxXxCW5AQMzo8GLKg"
 MP_ACCESS_TOKEN = "APP_USR-5861693151731886-030420-ba25ca80cb6f09ddae75270c8b781c72-254598124"
@@ -16,9 +15,9 @@ EBOOK_FILE = "ebook.pdf"
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
-# =============================
-# COMANDO /START
-# =============================
+# ==========================
+# COMANDO START
+# ==========================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -53,15 +52,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await context.bot.send_message(
         chat_id=chat_id,
-        text=f"Pague este PIX para receber o ebook:\n\n{pix}"
+        text=f"Pague o PIX abaixo para receber o ebook:\n\n{pix}"
     )
 
-# =============================
-# WEBHOOK MERCADO PAGO
-# =============================
+# ==========================
+# TELEGRAM WEBHOOK
+# ==========================
+
+@app.route("/telegram", methods=["POST"])
+def telegram_webhook():
+
+    update = Update.de_json(request.json, bot)
+
+    application = ApplicationBuilder().token(TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+
+    asyncio.run(application.process_update(update))
+
+    return "ok"
+
+# ==========================
+# MERCADO PAGO WEBHOOK
+# ==========================
 
 @app.route("/webhook", methods=["POST"])
-def webhook():
+def mp_webhook():
 
     data = request.json
 
@@ -91,30 +106,12 @@ def webhook():
 
     return "ok"
 
-# =============================
-# TELEGRAM BOT
-# =============================
-
-async def run_bot():
-
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-
-    print("Telegram bot iniciado")
-
-    await application.run_polling()
-
-# =============================
-# START SERVIDOR
-# =============================
-
-def start_flask():
-    app.run(host="0.0.0.0", port=8000)
+# ==========================
+# START
+# ==========================
 
 if __name__ == "__main__":
 
     print("Bot rodando...")
 
-    threading.Thread(target=start_flask).start()
-
-    asyncio.run(run_bot())
+    app.run(host="0.0.0.0", port=8000)
