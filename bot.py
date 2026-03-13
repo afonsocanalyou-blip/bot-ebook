@@ -5,17 +5,16 @@ from flask import Flask, request
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# CONFIGURAÇÃO - Puxa os dados da aba 'Variables' da Railway
+# CONFIGURAÇÃO
 TOKEN = os.getenv("TOKEN_TELEGRAM")
 MP_ACCESS_TOKEN = os.getenv("TOKEN_MERCADO_PAGO")
 EBOOK_FILE = "ebook.pdf"
 
 app = Flask(__name__)
 
-# Inicializa a aplicação
+# Inicializa a aplicação globalmente
 application = ApplicationBuilder().token(TOKEN).build()
 
-# Comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     
@@ -50,13 +49,18 @@ application.add_handler(CommandHandler("start", start))
 
 @app.route("/telegram", methods=["POST"])
 async def telegram_webhook():
-    # Isso resolve o erro 'Application not initialized'
+    # PROTEÇÃO CRÍTICA: Garante inicialização (Resolve erro das imagens e703dd e e6f7de)
     if not application.active:
         await application.initialize()
         await application.start()
         
-    update = Update.de_json(request.get_json(), application.bot)
-    await application.process_update(update)
+    try:
+        data = request.get_json()
+        update = Update.de_json(data, application.bot)
+        await application.process_update(update)
+    except Exception as e:
+        print(f"Erro no processamento: {e}")
+        
     return "ok", 200
 
 @app.route("/webhook", methods=["POST"])
@@ -79,5 +83,6 @@ async def mp_webhook():
     return "ok", 200
 
 if __name__ == "__main__":
+    # Railway usa a porta 8080 (visto na imagem e59b1a)
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
