@@ -12,7 +12,7 @@ EBOOK_FILE = "ebook.pdf"
 
 app = Flask(__name__)
 
-# Inicializa a aplicação do bot de forma global
+# Inicializa a aplicação
 application = ApplicationBuilder().token(TOKEN).build()
 
 # Comando /start
@@ -44,19 +44,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         print(f"Erro MP: {e}")
-        await context.bot.send_message(chat_id=chat_id, text="Erro ao gerar PIX. Tente novamente.")
+        await context.bot.send_message(chat_id=chat_id, text="Erro ao gerar PIX.")
 
-# Adiciona o comando à aplicação
 application.add_handler(CommandHandler("start", start))
 
 @app.route("/telegram", methods=["POST"])
 async def telegram_webhook():
-    # Inicializa o bot se ele ainda não estiver ativo (resolve o erro 502/500)
+    # Isso resolve o erro 'Application not initialized'
     if not application.active:
         await application.initialize()
         await application.start()
         
-    # Processa a mensagem vinda do Telegram
     update = Update.de_json(request.get_json(), application.bot)
     await application.process_update(update)
     return "ok", 200
@@ -74,13 +72,12 @@ async def mp_webhook():
             chat_id = payment["metadata"]["chat_id"]
             try:
                 with open(EBOOK_FILE, "rb") as doc:
-                    await application.bot.send_document(chat_id=chat_id, document=doc, caption="✅ Pagamento aprovado!")
+                    await application.bot.send_document(chat_id=chat_id, document=doc, caption="✅ Pago!")
             except:
-                print("Arquivo não encontrado.")
+                print("PDF não encontrado.")
                 
     return "ok", 200
 
 if __name__ == "__main__":
-    # A Railway define a porta automaticamente na variável PORT
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
