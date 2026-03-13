@@ -12,17 +12,18 @@ EBOOK_FILE = "ebook.pdf"
 
 app = Flask(__name__)
 
-# Inicializa a aplicação do bot
+# Inicializa a aplicação do bot de forma global
 application = ApplicationBuilder().token(TOKEN).build()
 
+# Comando /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     
     payment_data = {
         "transaction_amount": 10.00,
-        "description": "E-book",
+        "description": "E-book Digital",
         "payment_method_id": "pix",
-        "payer": {"email": "afonsocanalyou@gmail.com"},
+        "payer": {"email": "cliente@email.com"},
         "metadata": {"chat_id": chat_id}
     }
 
@@ -38,21 +39,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         await context.bot.send_message(
             chat_id=chat_id,
-            text=f"🚀 *Pedido gerado!*\n\nCopie o código PIX abaixo:\n\n`{pix_code}`",
+            text=f"🚀 *Pedido gerado!*\n\nCopie o código PIX abaixo para pagar:\n\n`{pix_code}`",
             parse_mode="Markdown"
         )
-    except:
+    except Exception as e:
+        print(f"Erro MP: {e}")
         await context.bot.send_message(chat_id=chat_id, text="Erro ao gerar PIX. Tente novamente.")
 
+# Adiciona o comando à aplicação
 application.add_handler(CommandHandler("start", start))
 
 @app.route("/telegram", methods=["POST"])
 async def telegram_webhook():
-    # Isso impede o erro de 'Application not initialized' nos logs
+    # Inicializa o bot se ele ainda não estiver ativo (resolve o erro 502/500)
     if not application.active:
         await application.initialize()
         await application.start()
         
+    # Processa a mensagem vinda do Telegram
     update = Update.de_json(request.get_json(), application.bot)
     await application.process_update(update)
     return "ok", 200
@@ -68,12 +72,15 @@ async def mp_webhook():
 
         if payment.get("status") == "approved":
             chat_id = payment["metadata"]["chat_id"]
-            with open(EBOOK_FILE, "rb") as doc:
-                await application.bot.send_document(chat_id=chat_id, document=doc, caption="✅ Pago!")
+            try:
+                with open(EBOOK_FILE, "rb") as doc:
+                    await application.bot.send_document(chat_id=chat_id, document=doc, caption="✅ Pagamento aprovado!")
+            except:
+                print("Arquivo não encontrado.")
                 
     return "ok", 200
 
 if __name__ == "__main__":
-    # Importante: a Railway usa a porta 8080 ou outra definida pelo sistema
+    # A Railway define a porta automaticamente na variável PORT
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
